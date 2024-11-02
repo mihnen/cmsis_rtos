@@ -80,7 +80,6 @@ pub fn build(b: *std.Build) void {
     // zig fmt: off
     const sources = .{
         "Source/os_systick.c",
-        "RTX/Config/handlers.c",
         "RTX/Config/RTX_Config.c",
         "RTX/Source/rtx_delay.c",
         "RTX/Source/rtx_evflags.c",
