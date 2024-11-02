@@ -25,15 +25,15 @@ example of building with an ARM Cortex M7.
 In your main build.zig file
 
 ```zig
-const libcmsisrtx = b.dependency("libcmsisrtx", .{ .target = target, .optimize = optimize }).artifact("libcmsisrtx");
-exe.linkLibrary(libcmsisrtx);
+const cmsis_rtos = b.dependency("cmsis_rtos", .{ .target = target, .optimize = optimize }).artifact("cmsis_rtos");
+exe.linkLibrary(cmsis_rtos);
 ```
 
 In your build.zig.zon file. This assumes you have cloned this repo under src/lib/cmsis-rtos
 
 ```zig
 .dependencies = .{
-    .libcmsisrtx = .{
+    .cmsis_rtos = .{
         .path = "src/lib/cmsis-rtos",
     },
 },
