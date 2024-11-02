@@ -5,9 +5,9 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const library_name = "libcmsisrtx";
+    const library_name = "cmsis_rtos";
 
-    const libcmsisrtx = b.addStaticLibrary(.{
+    const lib = b.addStaticLibrary(.{
         .name = library_name,
         .target = target,
         .optimize = optimize,
@@ -57,7 +57,7 @@ pub fn build(b: *std.Build) void {
         .CMSIS_DEVICE_HEADER_VALUE = cmsis_header_name,
     });
 
-    libcmsisrtx.addConfigHeader(rte_components_h);
+    lib.addConfigHeader(rte_components_h);
 
     // zig fmt: off
     // Includes
@@ -73,8 +73,8 @@ pub fn build(b: *std.Build) void {
     // zig fmt: on
 
     inline for (headers_paths) |header| {
-        libcmsisrtx.installHeadersDirectory(b.path(header), "", .{});
-        libcmsisrtx.addIncludePath(b.path(header));
+        lib.installHeadersDirectory(b.path(header), "", .{});
+        lib.addIncludePath(b.path(header));
     }
 
     // zig fmt: off
@@ -98,16 +98,15 @@ pub fn build(b: *std.Build) void {
     // zig fmt: on
 
     inline for (sources) |name| {
-        libcmsisrtx.addCSourceFile(.{
+        lib.addCSourceFile(.{
             .file = b.path(std.fmt.comptimePrint("{s}/{s}", .{ cmsis_rtos_root, name })),
             .flags = &.{"-std=c11"},
         });
     }
 
-    // TODO: make this dependent on target
-    libcmsisrtx.addAssemblyFile(b.path(cmsis_assembly_path));
+    lib.addAssemblyFile(b.path(cmsis_assembly_path));
 
-    newlib.addIncludeHeadersAndSystemPathsTo(b, target, libcmsisrtx) catch |err| switch (err) {
+    newlib.addIncludeHeadersAndSystemPathsTo(b, target, lib) catch |err| switch (err) {
         newlib.Error.CompilerNotFound => {
             std.log.err("Couldn't find arm-none-eabi-gcc compiler!\n", .{});
             unreachable;
@@ -118,11 +117,11 @@ pub fn build(b: *std.Build) void {
         },
     };
 
-    libcmsisrtx.want_lto = false; // -flto
-    libcmsisrtx.link_data_sections = true; // -fdata-sections
-    libcmsisrtx.link_function_sections = true; // -ffunction-sections
-    libcmsisrtx.link_gc_sections = true; // -Wl,--gc-sections
+    lib.want_lto = false; // -flto
+    lib.link_data_sections = true; // -fdata-sections
+    lib.link_function_sections = true; // -ffunction-sections
+    lib.link_gc_sections = true; // -Wl,--gc-sections
 
     // Create artifact for top level project to depend on
-    b.getInstallStep().dependOn(&b.addInstallArtifact(libcmsisrtx, .{ .dest_dir = .{ .override = .{ .custom = "" } } }).step);
+    b.getInstallStep().dependOn(&b.addInstallArtifact(lib, .{ .dest_dir = .{ .override = .{ .custom = "" } } }).step);
 }
