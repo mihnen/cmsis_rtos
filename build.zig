@@ -5,13 +5,30 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const library_name = "cmsis_rtos";
-
     const lib = b.addStaticLibrary(.{
-        .name = library_name,
+        .name = "cmsis_rtos_clib",
         .target = target,
         .optimize = optimize,
     });
+
+    newlib.addIncludeHeadersAndSystemPathsTo(b, target, lib) catch |err| switch (err) {
+        newlib.Error.CompilerNotFound => {
+            std.log.err("Couldn't find arm-none-eabi-gcc compiler!\n", .{});
+            unreachable;
+        },
+        newlib.Error.IncompatibleCpu => {
+            std.log.err("Cpu: {s} isn't supported by gatz!\n", .{target.result.cpu.model.name});
+            unreachable;
+        },
+    };
+
+    const mod = b.addModule("cmsis_rtos", .{
+        .root_source_file = b.path("src/cmsis_rtos.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    mod.linkLibrary(lib);
 
     const root = "src/CMSIS_5";
     const cmsis_root = root ++ "/CMSIS";
@@ -73,8 +90,8 @@ pub fn build(b: *std.Build) void {
     // zig fmt: on
 
     inline for (headers_paths) |header| {
-        lib.installHeadersDirectory(b.path(header), "", .{});
         lib.addIncludePath(b.path(header));
+        mod.addIncludePath(b.path(header));
     }
 
     // zig fmt: off
@@ -100,28 +117,16 @@ pub fn build(b: *std.Build) void {
     inline for (sources) |name| {
         lib.addCSourceFile(.{
             .file = b.path(std.fmt.comptimePrint("{s}/{s}", .{ cmsis_rtos_root, name })),
-            .flags = &.{"-std=c11"},
+            .flags = &.{"-std=c99"},
         });
     }
 
     lib.addAssemblyFile(b.path(cmsis_assembly_path));
-
-    newlib.addIncludeHeadersAndSystemPathsTo(b, target, lib) catch |err| switch (err) {
-        newlib.Error.CompilerNotFound => {
-            std.log.err("Couldn't find arm-none-eabi-gcc compiler!\n", .{});
-            unreachable;
-        },
-        newlib.Error.IncompatibleCpu => {
-            std.log.err("Cpu: {s} isn't supported by gatz!\n", .{target.result.cpu.model.name});
-            unreachable;
-        },
-    };
 
     lib.want_lto = false; // -flto
     lib.link_data_sections = true; // -fdata-sections
     lib.link_function_sections = true; // -ffunction-sections
     lib.link_gc_sections = true; // -Wl,--gc-sections
 
-    // Create artifact for top level project to depend on
-    b.getInstallStep().dependOn(&b.addInstallArtifact(lib, .{ .dest_dir = .{ .override = .{ .custom = "" } } }).step);
+    b.installArtifact(lib);
 }

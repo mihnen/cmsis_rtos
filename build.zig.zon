@@ -38,13 +38,12 @@
     // the build root itself.
     // A directory listed here means that all files within, recursively, are included.
     .paths = .{
+        "",
         "build.zig",
         "build.zig.zon",
         "src",
+        "src/cmsis_rtos.zig",
         "src/CMSIS_5",
-        "src/CMSIS_5/CMSIS",
-        "src/CMSIS_5/CMSIS/RTOS2",
-        "src/CMSIS_5/CMSIS/RTOS2/Include",
         // For example...
         //"LICENSE",
         //"README.md",
