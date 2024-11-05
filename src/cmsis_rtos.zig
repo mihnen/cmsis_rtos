@@ -1,3 +1,5 @@
+const std = @import("std");
+
 pub const capi = @cImport({
     @cInclude("cmsis_os2.h");
 });
@@ -81,6 +83,18 @@ fn mapMaybeError(status: capi.osStatus_t) OsStatus!void {
 pub const osThreadAttr = capi.osThreadAttr_t;
 pub const osThreadFunc = capi.osThreadFunc_t;
 pub const osThreadId = *anyopaque;
+
+pub fn StackBuffer(comptime SizeInBytes: comptime_int) type {
+    comptime std.debug.assert(SizeInBytes % @sizeOf(u64) == 0);
+    return struct {
+        const dwords = SizeInBytes / @sizeOf(u64);
+        const Type = [SizeInBytes / @sizeOf(u64)]u64;
+
+        pub fn init() Type {
+            return std.mem.zeroes([dwords]u64);
+        }
+    };
+}
 
 pub fn osKernelInitialize() OsStatus!void {
     return mapMaybeError(capi.osKernelInitialize());
