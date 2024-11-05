@@ -18,6 +18,11 @@ pub const OsStatus = error{
     ErrorCreatingThread,
 };
 
+pub const LockState = enum(i32) {
+    NotLocked = 0,
+    Locked = 1,
+};
+
 pub const OsKernelState = enum {
     Inactive,
     Ready,
@@ -102,6 +107,29 @@ pub fn osKernelInitialize() OsStatus!void {
 
 pub fn osKernelStart() OsStatus!void {
     return mapMaybeError(capi.osKernelStart());
+}
+
+pub fn osKernelLock() OsStatus!LockState {
+    const status = try capi.osKernelLock();
+    return @enumFromInt(status);
+}
+
+pub fn osKernelUnlock() OsStatus!LockState {
+    const status = try capi.osKernelUnlock();
+    return @enumFromInt(status);
+}
+
+pub fn osKernelRestoreLock(state: LockState) OsStatus!LockState {
+    const status = try capi.osKernelRestoreLock(@intFromEnum(state));
+    return @enumFromInt(status);
+}
+
+pub fn osKernelSuspend() u32 {
+    return capi.osKernelSuspend();
+}
+
+pub fn osKernelResume(sleep_ticks: u32) void {
+    capi.osKernelResume(sleep_ticks);
 }
 
 pub fn osThreadNew(func: osThreadFunc, arg: ?*anyopaque, attr: [*c]const osThreadAttr) OsStatus!osThreadId {
