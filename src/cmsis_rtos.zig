@@ -16,6 +16,7 @@ pub const OsStatus = error{
     ErrorNoMemory,
     ErrorIsr,
     ErrorCreatingThread,
+    ErrorCreatingEventFlags,
 };
 
 // Must match definition in cmsis_os2.h
@@ -156,14 +157,24 @@ pub const osThreadAttr = capi.osThreadAttr_t;
 pub const osThreadFunc = capi.osThreadFunc_t;
 pub const osThreadId = *anyopaque;
 
-pub fn StackBuffer(comptime SizeInBytes: comptime_int) type {
-    comptime std.debug.assert(SizeInBytes % @sizeOf(u64) == 0);
-    return struct {
-        const dwords = SizeInBytes / @sizeOf(u64);
-        const Type = [SizeInBytes / @sizeOf(u64)]u64;
+pub fn StackMem(comptime SizeInBytes: comptime_int) type {
+    return MemBlock(u64, SizeInBytes);
+}
 
-        pub fn init() Type {
-            return std.mem.zeroes([dwords]u64);
+pub fn ControlBlockMem(comptime SizeInBytes: comptime_int) type {
+    return MemBlock(u32, SizeInBytes);
+}
+
+fn MemBlock(comptime T: type, comptime N: comptime_int) type {
+    return struct {
+        const MemType = [N / @sizeOf(T)]T;
+
+        mem: MemType = std.mem.zeroes(MemType),
+        size: usize = N,
+
+        pub fn init() @This() {
+            comptime std.debug.assert(N % @sizeOf(T) == 0);
+            return .{};
         }
     };
 }
@@ -355,6 +366,26 @@ pub fn osThreadFlagsWait(flags: OsThreadFlags, options: OsFlagOptions, timeout: 
     return mapMaybeOsFlagsError(prev_flags);
 }
 
+// ---- Event Flags API -------------------------------------------------------
+
+pub const OsEventFlagsAttr = capi.osEventFlagsAttr_t;
+pub const OsEventFlagsId = *anyopaque;
+
+// osEventFlagsId_t osEventFlagsNew (const osEventFlagsAttr_t *attr);
+pub fn osEventFlagsNew(attr: *const OsEventFlagsAttr) OsStatus!OsEventFlagsId {
+    const result = capi.osEventFlagsNew(attr);
+    if (result == null) {
+        return OsStatus.ErrorCreatingEventFlags;
+    }
+    return result.?;
+}
+
+// ---- Generic Wait Functions API --------------------------------------------
+
 pub fn osDelay(ticks: u32) OsStatus!void {
     return mapMaybeError(capi.osDelay(ticks));
+}
+
+pub fn osDelayUntil(absolute_ticks: u32) OsStatus!void {
+    return mapMaybeError(capi.osDelayUntil(absolute_ticks));
 }
