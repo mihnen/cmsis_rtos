@@ -18,9 +18,76 @@ pub const OsStatus = error{
     ErrorCreatingThread,
 };
 
+// Must match definition in cmsis_os2.h
 pub const LockState = enum(i32) {
     NotLocked = 0,
     Locked = 1,
+};
+
+// Must match definition in cmsis_os2.h
+pub const OsThreadState = enum(i32) {
+    Inactive = 0,
+    Ready = 1,
+    Running = 2,
+    Blocked = 3,
+    Terminated = 4,
+    Error = -1,
+};
+
+// Must match definition in cmsis_os2.h
+pub const OsThreadPriority = enum(i32) {
+    None = 0,
+    Idle = 1,
+    Low = 8,
+    Low1 = 8 + 1,
+    Low2 = 8 + 2,
+    Low3 = 8 + 3,
+    Low4 = 8 + 4,
+    Low5 = 8 + 5,
+    Low6 = 8 + 6,
+    Low7 = 8 + 7,
+    BelowNormal = 16,
+    BelowNormal1 = 16 + 1,
+    BelowNormal2 = 16 + 2,
+    BelowNormal3 = 16 + 3,
+    BelowNormal4 = 16 + 4,
+    BelowNormal5 = 16 + 5,
+    BelowNormal6 = 16 + 6,
+    BelowNormal7 = 16 + 7,
+    Normal = 24,
+    Normal1 = 24 + 1,
+    Normal2 = 24 + 2,
+    Normal3 = 24 + 3,
+    Normal4 = 24 + 4,
+    Normal5 = 24 + 5,
+    Normal6 = 24 + 6,
+    Normal7 = 24 + 7,
+    AboveNormal = 32,
+    AboveNormal1 = 32 + 1,
+    AboveNormal2 = 32 + 2,
+    AboveNormal3 = 32 + 3,
+    AboveNormal4 = 32 + 4,
+    AboveNormal5 = 32 + 5,
+    AboveNormal6 = 32 + 6,
+    AboveNormal7 = 32 + 7,
+    High = 40,
+    High1 = 40 + 1,
+    High2 = 40 + 2,
+    High3 = 40 + 3,
+    High4 = 40 + 4,
+    High5 = 40 + 5,
+    High6 = 40 + 6,
+    High7 = 40 + 7,
+    Realtime = 48,
+    Realtime1 = 48 + 1,
+    Realtime2 = 48 + 2,
+    Realtime3 = 48 + 3,
+    Realtime4 = 48 + 4,
+    Realtime5 = 48 + 5,
+    Realtime6 = 48 + 6,
+    Realtime7 = 48 + 7,
+    ISR = 56,
+    Error = -1,
 };
 
 pub const OsKernelState = enum {
@@ -132,20 +199,24 @@ pub fn osKernelResume(sleep_ticks: u32) void {
     capi.osKernelResume(sleep_ticks);
 }
 
-pub fn osThreadNew(func: osThreadFunc, arg: ?*anyopaque, attr: [*c]const osThreadAttr) OsStatus!osThreadId {
-    const result = capi.osThreadNew(func, arg, attr);
-    if (result == null) {
-        return OsStatus.ErrorCreatingThread;
-    }
-    return result.?;
+pub fn osKernelGetTickCount() u32 {
+    return capi.osKernelGetTickCount();
+}
+
+pub fn osKernelGetTickFreq() u32 {
+    return capi.osKernelGetTickFreq();
+}
+
+pub fn osKernelGetSysTimerCount() u32 {
+    return capi.osKernelGetSysTimerCount();
+}
+
+pub fn osKernelGetSysTimerFreq() u32 {
+    return capi.osKernelGetSysTimerFreq();
 }
 
 pub fn osKernelGetState() OsKernelState {
     return OsKernelState.mapFromApi(capi.osKernelGetState());
-}
-
-pub fn osDelay(ticks: u32) OsStatus!void {
-    return mapMaybeError(capi.osDelay(ticks));
 }
 
 const OsVersion = capi.osVersion_t;
@@ -154,4 +225,32 @@ pub fn osKernelGetInfo(buf: []u8) OsStatus!OsVersion {
     var version: OsVersion = undefined;
     try mapMaybeError(capi.osKernelGetInfo(&version, buf.ptr, buf.len));
     return version;
+}
+
+pub fn osThreadNew(func: osThreadFunc, arg: ?*anyopaque, attr: [*c]const osThreadAttr) OsStatus!osThreadId {
+    const result = capi.osThreadNew(func, arg, attr);
+    if (result == null) {
+        return OsStatus.ErrorCreatingThread;
+    }
+    return result.?;
+}
+
+pub fn osThreadGetName(thread: osThreadId) []const u8 {
+    return std.mem.sliceTo(capi.osThreadGetName(thread), 0);
+}
+
+pub fn osThreadGetId() ?osThreadId {
+    return capi.osThreadGetId();
+}
+
+pub fn osThreadGetState(thread_id: osThreadId) OsThreadState {
+    return @enumFromInt(capi.osThreadGetState(thread_id));
+}
+
+pub fn osThreadSetPriority(thread_id: osThreadId, priority: OsThreadPriority) OsStatus!void {
+    return mapMaybeError(capi.osThreadSetPriority(thread_id, @intFromEnum(priority)));
+}
+
+pub fn osDelay(ticks: u32) OsStatus!void {
+    return mapMaybeError(capi.osDelay(ticks));
 }
