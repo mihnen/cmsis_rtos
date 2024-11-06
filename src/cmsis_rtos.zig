@@ -17,6 +17,7 @@ pub const OsStatus = error{
     ErrorIsr,
     ErrorCreatingThread,
     ErrorCreatingEventFlags,
+    ErrorCreatingTimer,
 };
 
 // Must match definition in cmsis_os2.h
@@ -429,6 +430,45 @@ pub fn osEventFlagsWait(flags: OsEventFlags, options: OsFlagOptions, timeout: u3
 
 pub fn osEventFlagsDelete(ef_id: OsEventFlagsId) OsStatus!void {
     return mapMaybeError(capi.osEventFlagsDelete(ef_id));
+}
+
+// ---- Timer API -------------------------------------------------------------
+
+pub const OsTimerId = *anyopaque;
+pub const OsTimerFunc = capi.osTimerFunc_t;
+pub const OsTimerAttr = capi.osTimerAttr_t;
+
+pub const OsTimerType = enum(u32) {
+    Once = capi.osTimerOnce,
+    Periodic = capi.osTimerPeriodic,
+};
+
+pub fn osTimerNew(timer_type: OsTimerType, arg: ?*anyopaque, attr: *const OsTimerAttr, func: OsTimerFunc) OsStatus!OsTimerId {
+    const result = capi.osTimerNew(func, @intFromEnum(timer_type), arg, attr);
+    if (result == null) {
+        return OsStatus.ErrorCreatingTimer;
+    }
+    return result.?;
+}
+
+pub fn osTimerGetName(timer_id: OsTimerId) []const u8 {
+    return std.mem.sliceTo(capi.osTimerGetName(timer_id), 0);
+}
+
+pub fn osTimerStart(timer_id: OsTimerId, ticks: u32) OsStatus!void {
+    return mapMaybeError(capi.osTimerStart(timer_id, ticks));
+}
+
+pub fn osTimerStop(timer_id: OsTimerId) OsStatus!void {
+    return mapMaybeError(capi.osTimerStop(timer_id));
+}
+
+pub fn osTimerIsRunning(timer_id: OsTimerId) bool {
+    return 0 != capi.osTimerIsRunning(timer_id);
+}
+
+pub fn osTimerDelete(timer_id: OsTimerId) OsStatus!void {
+    return mapMaybeError(capi.osTimerDelete(timer_id));
 }
 
 // ---- Generic Wait Functions API --------------------------------------------
