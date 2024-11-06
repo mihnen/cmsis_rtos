@@ -370,6 +370,30 @@ pub fn osThreadFlagsWait(flags: OsThreadFlags, options: OsFlagOptions, timeout: 
 
 pub const OsEventFlagsAttr = capi.osEventFlagsAttr_t;
 pub const OsEventFlagsId = *anyopaque;
+pub const OsEventFlags = std.bit_set.IntegerBitSet(32);
+
+fn mapMaybeOsEventFlagsError(status: u32) OsFlagsError!OsEventFlags {
+    switch (status) {
+        capi.osFlagsErrorISR => {
+            return OsFlagsError.Isr;
+        },
+        capi.osFlagsErrorParameter => {
+            return OsFlagsError.Parameter;
+        },
+        capi.osFlagsErrorResource => {
+            return OsFlagsError.Resource;
+        },
+        capi.osFlagsErrorTimeout => {
+            return OsFlagsError.Timeout;
+        },
+        capi.osFlagsErrorUnknown => {
+            return OsFlagsError.Unknown;
+        },
+        else => {
+            return .{ .mask = status };
+        },
+    }
+}
 
 // osEventFlagsId_t osEventFlagsNew (const osEventFlagsAttr_t *attr);
 pub fn osEventFlagsNew(attr: *const OsEventFlagsAttr) OsStatus!OsEventFlagsId {
@@ -378,6 +402,33 @@ pub fn osEventFlagsNew(attr: *const OsEventFlagsAttr) OsStatus!OsEventFlagsId {
         return OsStatus.ErrorCreatingEventFlags;
     }
     return result.?;
+}
+
+pub fn osEventFlagsGetName(ef_id: OsEventFlagsId) []const u8 {
+    return std.mem.sliceTo(capi.osEventFlagsGetName(ef_id), 0);
+}
+
+pub fn osEventFlagsSet(ef_id: osThreadId, flags: OsEventFlags) OsFlagsError!OsEventFlags {
+    const prev_flags = capi.osEventFlagsSet(ef_id, flags.mask);
+    return mapMaybeOsEventFlagsError(prev_flags);
+}
+
+pub fn osEventFlagsClear(flags: OsEventFlagsId) OsFlagsError!OsEventFlags {
+    const prev_flags = capi.osEventFlagsClear(flags.mask);
+    return mapMaybeOsEventFlagsError(prev_flags);
+}
+
+pub fn osEventFlagsGet() OsEventFlags {
+    return .{ .mask = capi.osEventFlagsGet() };
+}
+
+pub fn osEventFlagsWait(flags: OsEventFlags, options: OsFlagOptions, timeout: u32) OsFlagsError!OsEventFlags {
+    const prev_flags = capi.osEventFlagsWait(flags.mask, @intFromEnum(options), timeout);
+    return mapMaybeOsEventFlagsError(prev_flags);
+}
+
+pub fn osEventFlagsDelete(ef_id: OsEventFlagsId) OsStatus!void {
+    return mapMaybeError(capi.osEventFlagsDelete(ef_id));
 }
 
 // ---- Generic Wait Functions API --------------------------------------------
