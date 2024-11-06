@@ -168,6 +168,8 @@ pub fn StackBuffer(comptime SizeInBytes: comptime_int) type {
     };
 }
 
+// ---- Kernel Management API -------------------------------------------------
+
 pub fn osKernelInitialize() OsStatus!void {
     return mapMaybeError(capi.osKernelInitialize());
 }
@@ -226,6 +228,8 @@ pub fn osKernelGetInfo(buf: []u8) OsStatus!OsVersion {
     try mapMaybeError(capi.osKernelGetInfo(&version, buf.ptr, buf.len));
     return version;
 }
+
+// ---- Thread Management API -------------------------------------------------
 
 pub fn osThreadNew(func: osThreadFunc, arg: ?*anyopaque, attr: [*c]const osThreadAttr) OsStatus!osThreadId {
     const result = capi.osThreadNew(func, arg, attr);
@@ -289,6 +293,66 @@ pub fn osThreadTerminate(thread_id: osThreadId) OsStatus!void {
 
 pub fn osThreadGetCount() u32 {
     return capi.osThreadGetCount();
+}
+
+// ---- Thread Flags API ------------------------------------------------------
+
+pub const OsThreadFlags = std.bit_set.IntegerBitSet(32);
+
+pub const OsFlagsError = error{
+    Isr,
+    Parameter,
+    Resource,
+    Timeout,
+    Unknown,
+};
+
+pub const OsFlagOptions = enum(u32) {
+    WaitAny = capi.osFlagsWaitAny,
+    WaitAll = capi.osFlagsWaitAll,
+    NoClear = capi.osFlagsNoClear,
+};
+
+fn mapMaybeOsFlagsError(status: u32) OsFlagsError!OsThreadFlags {
+    switch (status) {
+        capi.osFlagsErrorISR => {
+            return OsFlagsError.Isr;
+        },
+        capi.osFlagsErrorParameter => {
+            return OsFlagsError.Parameter;
+        },
+        capi.osFlagsErrorResource => {
+            return OsFlagsError.Resource;
+        },
+        capi.osFlagsErrorTimeout => {
+            return OsFlagsError.Timeout;
+        },
+        capi.osFlagsErrorUnknown => {
+            return OsFlagsError.Unknown;
+        },
+        else => {
+            return .{ .mask = status };
+        },
+    }
+}
+
+pub fn osThreadFlagsSet(thread_id: osThreadId, flags: OsThreadFlags) OsFlagsError!OsThreadFlags {
+    const prev_flags = capi.osThreadFlagsSet(thread_id, flags.mask);
+    return mapMaybeOsFlagsError(prev_flags);
+}
+
+pub fn osThreadFlagsClear(flags: OsThreadFlags) OsFlagsError!OsThreadFlags {
+    const prev_flags = capi.osThreadFlagsClear(flags.mask);
+    return mapMaybeOsFlagsError(prev_flags);
+}
+
+pub fn osThreadFlagsGet() OsThreadFlags {
+    return .{ .mask = capi.osThreadFlagsGet() };
+}
+
+pub fn osThreadFlagsWait(flags: OsThreadFlags, options: OsFlagOptions, timeout: u32) OsFlagsError!OsThreadFlags {
+    const prev_flags = capi.osThreadFlagsWait(flags.mask, @intFromEnum(options), timeout);
+    return mapMaybeOsFlagsError(prev_flags);
 }
 
 pub fn osDelay(ticks: u32) OsStatus!void {
