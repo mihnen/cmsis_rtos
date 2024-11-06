@@ -247,8 +247,48 @@ pub fn osThreadGetState(thread_id: osThreadId) OsThreadState {
     return @enumFromInt(capi.osThreadGetState(thread_id));
 }
 
+pub fn osThreadGetStackSize(thread_id: osThreadId) u32 {
+    return capi.osThreadGetStackSize(thread_id);
+}
+
+pub fn osThreadGetStackSpace(thread_id: osThreadId) u32 {
+    return capi.osThreadGetStackSpace(thread_id);
+}
+
 pub fn osThreadSetPriority(thread_id: osThreadId, priority: OsThreadPriority) OsStatus!void {
     return mapMaybeError(capi.osThreadSetPriority(thread_id, @intFromEnum(priority)));
+}
+
+pub fn osThreadGetPriority(thread_id: osThreadId) OsThreadPriority {
+    return @enumFromInt(capi.osThreadGetPriority(thread_id));
+}
+
+pub fn osThreadYield() OsStatus!void {
+    return mapMaybeError(capi.osThreadYield());
+}
+
+pub fn osThreadSuspend(thread_id: osThreadId) OsStatus!void {
+    return mapMaybeError(capi.osThreadSuspend(thread_id));
+}
+
+pub fn osThreadResume(thread_id: osThreadId) OsStatus!void {
+    return mapMaybeError(capi.osThreadResume(thread_id));
+}
+
+pub fn osThreadDetach(thread_id: osThreadId) OsStatus!void {
+    return mapMaybeError(capi.osThreadDetach(thread_id));
+}
+
+pub fn osThreadJoin(thread_id: osThreadId) OsStatus!void {
+    return mapMaybeError(capi.osThreadJoin(thread_id));
+}
+
+pub fn osThreadTerminate(thread_id: osThreadId) OsStatus!void {
+    return mapMaybeError(capi.osThreadTerminate(thread_id));
+}
+
+pub fn osThreadGetCount() u32 {
+    return capi.osThreadGetCount();
 }
 
 pub fn osDelay(ticks: u32) OsStatus!void {
