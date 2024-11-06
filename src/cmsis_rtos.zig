@@ -2,6 +2,7 @@ const std = @import("std");
 
 pub const capi = @cImport({
     @cInclude("cmsis_os2.h");
+    @cInclude("rtx_os.h");
 });
 
 pub const RtosError = error{
@@ -18,6 +19,7 @@ pub const OsStatus = error{
     ErrorCreatingThread,
     ErrorCreatingEventFlags,
     ErrorCreatingTimer,
+    ErrorCreatingMutex,
 };
 
 // Must match definition in cmsis_os2.h
@@ -372,6 +374,7 @@ pub fn osThreadFlagsWait(flags: OsThreadFlags, options: OsFlagOptions, timeout: 
 pub const OsEventFlagsAttr = capi.osEventFlagsAttr_t;
 pub const OsEventFlagsId = *anyopaque;
 pub const OsEventFlags = std.bit_set.IntegerBitSet(32);
+pub const OsEventFlagsCbSize = capi.osRtxEventFlagsCbSize;
 
 fn mapMaybeOsEventFlagsError(status: u32) OsFlagsError!OsEventFlags {
     switch (status) {
@@ -437,6 +440,7 @@ pub fn osEventFlagsDelete(ef_id: OsEventFlagsId) OsStatus!void {
 pub const OsTimerId = *anyopaque;
 pub const OsTimerFunc = capi.osTimerFunc_t;
 pub const OsTimerAttr = capi.osTimerAttr_t;
+pub const OsTimerCbSize = capi.osRtxTimerCbSize;
 
 pub const OsTimerType = enum(u32) {
     Once = capi.osTimerOnce,
@@ -479,4 +483,31 @@ pub fn osDelay(ticks: u32) OsStatus!void {
 
 pub fn osDelayUntil(absolute_ticks: u32) OsStatus!void {
     return mapMaybeError(capi.osDelayUntil(absolute_ticks));
+}
+
+// ---- Mutex API -------------------------------------------------------------
+
+pub const OsMutexAttr = capi.osMutexAttr_t;
+pub const OsMutexId = *anyopaque;
+pub const OsMutexCbSize: usize = capi.osRtxMutexCbSize;
+
+//osMutexId_t osMutexNew (const osMutexAttr_t *attr);
+pub fn osMutexNew(attr: *const OsMutexAttr) OsStatus!OsMutexId {
+    const result = capi.osMutexNew(attr);
+    if (result == null) {
+        return OsStatus.ErrorCreatingMutex;
+    }
+    return result.?;
+}
+
+pub fn osMutexGetName(mutex_id: OsMutexId) []const u8 {
+    return std.mem.sliceTo(capi.osMutexGetName(mutex_id), 0);
+}
+
+pub fn osMutexAcquire(mutex_id: OsMutexId, timeout_ticks: u32) OsStatus!void {
+    return try mapMaybeError(capi.osMutexAcquire(mutex_id, timeout_ticks));
+}
+
+pub fn osMutexRelease(mutex_id: OsMutexId) OsStatus!void {
+    return try mapMaybeError(capi.osMutexRelease(mutex_id));
 }
