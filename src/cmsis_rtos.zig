@@ -612,3 +612,72 @@ pub fn osMessageQueueReset(msgq_id: OsMessageQueueId) OsStatus!void {
 pub fn osMessageQueueDelete(msgq_id: OsMessageQueueId) OsStatus!void {
     return try mapMaybeError(capi.osMessageQueueDelete(msgq_id));
 }
+
+// ---- Zig allocator wrapper for RTOS memory pools ---------------------------
+
+const OsMemoryPoolId = ?*anyopaque;
+
+pub const MemoryPoolConfig = struct {
+    block_count: usize,
+    block_size: usize,
+    alloc_timeout: u32,
+};
+
+pub fn MemoryPool(comptime config: MemoryPoolConfig) type {
+    return struct {
+        const Self = @This();
+
+        pool_id: OsMemoryPoolId = undefined,
+        config: MemoryPoolConfig = config,
+        control_block: ControlBlockMem(capi.osRtxMemoryPoolCbSize) = ControlBlockMem(capi.osRtxMemoryPoolCbSize).init(),
+        mem: MemBlock(u32, config.block_count * config.block_size) = MemBlock(u32, config.block_count * config.block_size).init(),
+        alloc_timeout: u32 = config.alloc_timeout,
+
+        pub fn init() Self {
+            var self: Self = .{};
+            self.pool_id = capi.osMemoryPoolNew(config.block_count, config.block_size, &.{
+                .cb_mem = &self.control_block.mem,
+                .cb_size = self.control_block.size,
+                .mp_mem = &self.mem.mem,
+                .mp_size = self.mem.size,
+            });
+
+            return self;
+        }
+
+        pub fn deinit(self: *Self) void {
+            _ = capi.osMemoryPoolDelete(self.pool_id);
+        }
+
+        fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+            _ = ptr_align;
+            _ = ret_addr;
+            const self: *Self = @ptrCast(@alignCast(ctx));
+
+            if (len > self.config.block_size) {
+                return null;
+            }
+
+            const p = capi.osMemoryPoolAlloc(self.pool_id, self.config.alloc_timeout);
+            return @ptrCast(@alignCast(p));
+        }
+
+        fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+            _ = buf_align;
+            _ = ret_addr;
+            const self: *Self = @ptrCast(@alignCast(ctx));
+            _ = capi.osMemoryPoolFree(self.pool_id, buf.ptr);
+        }
+
+        pub fn allocator(self: *const Self) std.mem.Allocator {
+            return .{
+                .ptr = @constCast(self),
+                .vtable = &.{
+                    .alloc = alloc,
+                    .resize = std.mem.Allocator.noResize,
+                    .free = free,
+                },
+            };
+        }
+    };
+}
