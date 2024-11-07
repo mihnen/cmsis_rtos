@@ -532,13 +532,25 @@ pub fn osMutexDelete(mutex_id: OsMutexId) OsStatus!void {
 // ---- Message Queue API -----------------------------------------------------
 pub const OsMessageQueueId = *anyopaque;
 pub const OsMessageQueueAttr = capi.osMessageQueueAttr_t;
-pub const OsMessagePoolCbSize: usize = capi.osRtxMessageQueueCbSize;
+pub const OsMessageQueueCbSize: usize = capi.osRtxMessageQueueCbSize;
 
-// osMessageQueueId_t osMessageQueueNew (uint32_t msg_count, uint32_t msg_size, const osMessageQueueAttr_t *attr);
 pub fn osMessageQueueNew(comptime T: type, msg_count: u32, attr: *const OsMessageQueueAttr) OsStatus!OsMessageQueueId {
     const result = capi.osMessageQueueNew(msg_count, @sizeOf(T), attr);
     if (result == null) {
         return OsStatus.ErrorCreatingMessageQueue;
     }
     return result.?;
+}
+
+pub fn osMessageQueueGetName(msgq_id: OsMessageQueueId) []const u8 {
+    return std.mem.sliceTo(capi.osMessageQueueGetName(msgq_id), 0);
+}
+
+pub fn osMessageQueuePut(msgq_id: OsMessageQueueId, msg_ptr: *const anyopaque, msg_pri: u8, timeout: u32) OsStatus!void {
+    return try mapMaybeError(capi.osMessageQueuePut(msgq_id, msg_ptr, msg_pri, timeout));
+}
+
+// osStatus_t osMessageQueueGet (osMessageQueueId_t mq_id, void *msg_ptr, uint8_t *msg_prio, uint32_t timeout);
+pub fn osMessageQueueGet(msgq_id: OsMessageQueueId, msg_ptr: *anyopaque, msg_pri: *u8, timeout: u32) OsStatus!void {
+    return try mapMaybeError(capi.osMessageQueueGet(msgq_id, msg_ptr, msg_pri, timeout));
 }
