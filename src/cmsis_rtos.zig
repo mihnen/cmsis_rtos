@@ -22,6 +22,7 @@ pub const OsStatus = error{
     ErrorCreatingTimer,
     ErrorCreatingMutex,
     ErrorCreatingMessageQueue,
+    ErrorCreatingSemaphore,
 };
 
 // Must match definition in cmsis_os2.h
@@ -532,7 +533,42 @@ pub fn osMutexDelete(mutex_id: OsMutexId) OsStatus!void {
     return try mapMaybeError(capi.osMutexDelete(mutex_id));
 }
 
+// ---- Semaphore API ---------------------------------------------------------
+
+pub const OsSemaphoreAttr = capi.osSemaphoreAttr_t;
+pub const OsSemaphoreId = *anyopaque;
+pub const OsSemaphoreCbSize: usize = capi.osRtxSemaphoreCbSize;
+
+pub fn osSemaphoreNew(max_count: u32, initial_count: u32, attr: *const OsSemaphoreAttr) OsStatus!OsSemaphoreId {
+    const result = capi.osSemaphoreNew(max_count, initial_count, attr);
+    if (result == null) {
+        return OsStatus.ErrorCreatingSemaphore;
+    }
+    return result.?;
+}
+
+pub fn osSemaphoreGetName(semaphore_id: OsSemaphoreId) []const u8 {
+    return std.mem.sliceTo(capi.osSemaphoreGetName(semaphore_id), 0);
+}
+
+pub fn osSemaphoreAcquire(semaphore_id: OsSemaphoreId, timeout: u32) OsStatus!void {
+    return try mapMaybeError(capi.osSemaphoreAcquire(semaphore_id, timeout));
+}
+
+pub fn osSemaphoreRelease(semaphore_id: OsSemaphoreId) OsStatus!void {
+    return try mapMaybeError(capi.osSemaphoreRelease(semaphore_id));
+}
+
+pub fn osSemaphoreGetCount(semaphore_id: OsSemaphoreId) u32 {
+    return capi.osSemaphoreGetCount(semaphore_id);
+}
+
+pub fn osSemaphoreDelete(semaphore_id: OsSemaphoreId) OsStatus!void {
+    return try mapMaybeError(capi.osSemaphoreDelete(semaphore_id));
+}
+
 // ---- Message Queue API -----------------------------------------------------
+
 pub const OsMessageQueueId = *anyopaque;
 pub const OsMessageQueueAttr = capi.osMessageQueueAttr_t;
 pub const OsMessageQueueCbSize: usize = capi.osRtxMessageQueueCbSize;
@@ -565,7 +601,6 @@ pub fn osMessageQueueGetSpace(msgq_id: OsMessageQueueId) u32 {
     return capi.osMessageQueueGetSpace(msgq_id);
 }
 
-// uint32_t osMessageQueueGetCapacity (osMessageQueueId_t mq_id);
 pub fn osMessageQueueGetCapacity(msgq_id: OsMessageQueueId) u32 {
     return capi.osMessageQueueGetCapacity(msgq_id);
 }
