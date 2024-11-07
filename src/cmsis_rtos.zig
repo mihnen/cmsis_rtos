@@ -2,6 +2,7 @@ const std = @import("std");
 
 pub const capi = @cImport({
     @cInclude("cmsis_os2.h");
+    // for osRtxXXXCbSize definitions
     @cInclude("rtx_os.h");
 });
 
@@ -510,4 +511,12 @@ pub fn osMutexAcquire(mutex_id: OsMutexId, timeout_ticks: u32) OsStatus!void {
 
 pub fn osMutexRelease(mutex_id: OsMutexId) OsStatus!void {
     return try mapMaybeError(capi.osMutexRelease(mutex_id));
+}
+
+pub fn osMutexGetOwner(mutex_id: OsMutexId) ?osThreadId {
+    return capi.osMutexGetOwner(mutex_id);
+}
+
+pub fn osMutexDelete(mutex_id: OsMutexId) OsStatus!void {
+    return try mapMaybeError(capi.osMutexDelete(mutex_id));
 }
