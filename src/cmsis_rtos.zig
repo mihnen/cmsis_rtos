@@ -495,6 +495,9 @@ pub fn osDelayUntil(absolute_ticks: u32) OsStatus!void {
     return mapMaybeError(capi.osDelayUntil(absolute_ticks));
 }
 
+pub const osWaitForever = capi.osWaitForever;
+pub const osTryOnce: u32 = 0;
+
 // ---- Mutex API -------------------------------------------------------------
 
 pub const OsMutexAttr = capi.osMutexAttr_t;
@@ -552,4 +555,25 @@ pub fn osMessageQueuePut(msgq_id: OsMessageQueueId, msg_ptr: *const anyopaque, m
 
 pub fn osMessageQueueGet(msgq_id: OsMessageQueueId, msg_ptr: *anyopaque, msg_pri: ?*u8, timeout: u32) OsStatus!void {
     return try mapMaybeError(capi.osMessageQueueGet(msgq_id, msg_ptr, msg_pri, timeout));
+}
+
+pub fn osMessageQueueGetCount(msgq_id: OsMessageQueueId) u32 {
+    return capi.osMessageQueueGetCount(msgq_id);
+}
+
+pub fn osMessageQueueGetSpace(msgq_id: OsMessageQueueId) u32 {
+    return capi.osMessageQueueGetSpace(msgq_id);
+}
+
+// uint32_t osMessageQueueGetCapacity (osMessageQueueId_t mq_id);
+pub fn osMessageQueueGetCapacity(msgq_id: OsMessageQueueId) u32 {
+    return capi.osMessageQueueGetCapacity(msgq_id);
+}
+
+pub fn osMessageQueueReset(msgq_id: OsMessageQueueId) OsStatus!void {
+    return try mapMaybeError(capi.osMessageQueueReset(msgq_id));
+}
+
+pub fn osMessageQueueDelete(msgq_id: OsMessageQueueId) OsStatus!void {
+    return try mapMaybeError(capi.osMessageQueueDelete(msgq_id));
 }
