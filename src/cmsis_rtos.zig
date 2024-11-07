@@ -21,6 +21,7 @@ pub const OsStatus = error{
     ErrorCreatingEventFlags,
     ErrorCreatingTimer,
     ErrorCreatingMutex,
+    ErrorCreatingMessageQueue,
 };
 
 // Must match definition in cmsis_os2.h
@@ -169,7 +170,14 @@ pub fn ControlBlockMem(comptime SizeInBytes: comptime_int) type {
     return MemBlock(u32, SizeInBytes);
 }
 
-fn MemBlock(comptime T: type, comptime N: comptime_int) type {
+pub fn MessageQueueMem(comptime T: type, comptime N: comptime_int) type {
+    // There are undocumented bytes in each item of the queue that RTX
+    // uses so we need to account for that in each one of the entries.
+    // see: https://github.com/ARM-software/CMSIS_5/issues/1063
+    return MemBlock(u8, (12 + @sizeOf(T)) * N);
+}
+
+pub fn MemBlock(comptime T: type, comptime N: comptime_int) type {
     return struct {
         const MemType = [N / @sizeOf(T)]T;
 
@@ -492,7 +500,6 @@ pub const OsMutexAttr = capi.osMutexAttr_t;
 pub const OsMutexId = *anyopaque;
 pub const OsMutexCbSize: usize = capi.osRtxMutexCbSize;
 
-//osMutexId_t osMutexNew (const osMutexAttr_t *attr);
 pub fn osMutexNew(attr: *const OsMutexAttr) OsStatus!OsMutexId {
     const result = capi.osMutexNew(attr);
     if (result == null) {
@@ -519,4 +526,18 @@ pub fn osMutexGetOwner(mutex_id: OsMutexId) ?osThreadId {
 
 pub fn osMutexDelete(mutex_id: OsMutexId) OsStatus!void {
     return try mapMaybeError(capi.osMutexDelete(mutex_id));
+}
+
+// ---- Message Queue API -----------------------------------------------------
+pub const OsMessageQueueId = *anyopaque;
+pub const OsMessageQueueAttr = capi.osMessageQueueAttr_t;
+pub const osMessagePoolCbSize: usize = capi.osRtxMemoryPoolCbSize;
+
+// osMessageQueueId_t osMessageQueueNew (uint32_t msg_count, uint32_t msg_size, const osMessageQueueAttr_t *attr);
+pub fn osMessageQueueNew(comptime T: type, msg_count: u32, attr: *const OsMessageQueueAttr) OsStatus!OsMessageQueueId {
+    const result = capi.osMessageQueueNew(msg_count, @sizeOf(T), attr);
+    if (result == null) {
+        return OsStatus.ErrorCreatingMessageQueue;
+    }
+    return result.?;
 }
