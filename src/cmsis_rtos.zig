@@ -171,10 +171,11 @@ pub fn ControlBlockMem(comptime SizeInBytes: comptime_int) type {
 }
 
 pub fn MessageQueueMem(comptime T: type, comptime N: comptime_int) type {
-    // There are undocumented bytes in each item of the queue that RTX
+    // There are 12 undocumented bytes in each item of the queue that RTX
     // uses so we need to account for that in each one of the entries.
     // see: https://github.com/ARM-software/CMSIS_5/issues/1063
-    return MemBlock(u8, (12 + @sizeOf(T)) * N);
+    const size = capi.osRtxMessageQueueMemSize(N, @sizeOf(T));
+    return MemBlock(u32, size);
 }
 
 pub fn MemBlock(comptime T: type, comptime N: comptime_int) type {
@@ -531,7 +532,7 @@ pub fn osMutexDelete(mutex_id: OsMutexId) OsStatus!void {
 // ---- Message Queue API -----------------------------------------------------
 pub const OsMessageQueueId = *anyopaque;
 pub const OsMessageQueueAttr = capi.osMessageQueueAttr_t;
-pub const osMessagePoolCbSize: usize = capi.osRtxMemoryPoolCbSize;
+pub const OsMessagePoolCbSize: usize = capi.osRtxMessageQueueCbSize;
 
 // osMessageQueueId_t osMessageQueueNew (uint32_t msg_count, uint32_t msg_size, const osMessageQueueAttr_t *attr);
 pub fn osMessageQueueNew(comptime T: type, msg_count: u32, attr: *const OsMessageQueueAttr) OsStatus!OsMessageQueueId {
