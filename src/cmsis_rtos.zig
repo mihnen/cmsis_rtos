@@ -550,7 +550,6 @@ pub fn osMessageQueuePut(msgq_id: OsMessageQueueId, msg_ptr: *const anyopaque, m
     return try mapMaybeError(capi.osMessageQueuePut(msgq_id, msg_ptr, msg_pri, timeout));
 }
 
-// osStatus_t osMessageQueueGet (osMessageQueueId_t mq_id, void *msg_ptr, uint8_t *msg_prio, uint32_t timeout);
-pub fn osMessageQueueGet(msgq_id: OsMessageQueueId, msg_ptr: *anyopaque, msg_pri: *u8, timeout: u32) OsStatus!void {
+pub fn osMessageQueueGet(msgq_id: OsMessageQueueId, msg_ptr: *anyopaque, msg_pri: ?*u8, timeout: u32) OsStatus!void {
     return try mapMaybeError(capi.osMessageQueueGet(msgq_id, msg_ptr, msg_pri, timeout));
 }
