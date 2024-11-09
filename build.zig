@@ -47,6 +47,20 @@ pub fn build(b: *std.Build) !void {
     // Event flags
     const evflags_obj_mem = b.option(bool, "evflags_obj_mem", "Enable event flag allocation from object specific memory pool") orelse false;
     const evflags_num = b.option(u32, "evflags_num", "Defines maximum number of objects that can be active at the same time. Applies to objects with system provided memory for control blocks. Value range is [1-1000].") orelse 1;
+    // Mutex
+    const mutex_obj_mem = b.option(bool, "mutex_obj_mem", "Enable mutex allocation from object specific memory pool") orelse false;
+    const mutex_num = b.option(u32, "mutex_num", "Defines maximum number of objects that can be active at the same time. Applies to objects with system provided memory for control blocks. Value range is [1-1000].") orelse 1;
+    // Semaphore
+    const semephore_obj_mem = b.option(bool, "semephore_obj_mem", "Enable semaphore allocation from object specific memory pool") orelse false;
+    const semephore_num = b.option(u32, "semephore_num", "Defines maximum number of objects that can be active at the same time. Applies to objects with system provided memory for control blocks. Value range is [1-1000].") orelse 1;
+    // Memory Pool
+    const mempool_obj_mem = b.option(bool, "mempool_obj_mem", "Enable object specific memory pools") orelse false;
+    const mempool_num = b.option(u32, "mempool_num", "Defines maximum number of objects that can be active at the same time. Applies to objects with system provided memory for control blocks. Value range is [1-1000].") orelse 1;
+    const mempool_data_size = b.option(u32, "mempool_data_size", "Defines the combined data storage memory size (bytes). Applies to objects with system provided memory for data storage. Default value is 0. Value range is [0-1073741824], in multiples of 8.") orelse 0;
+    // Message queue
+    const msgqueue_obj_mem = b.option(bool, "msgqueue_obj_mem", "Enable message queue allocation from object specific memory pool") orelse false;
+    const msgqueue_num = b.option(u32, "msgqueue_num", "Defines maximum number of objects that can be active at the same time. Applies to objects with system provided memory for control blocks. Value range is [1-1000].") orelse 1;
+    const msgqueue_data_size = b.option(u32, "msgqueue_data_size", "Defines the combined data storage memory size (bytes). Applies to objects with system provided memory for data storage. Default value is 0. Value range is [0-1073741824], in multiples of 8.") orelse 0;
 
     const lib = b.addStaticLibrary(.{
         .name = "cmsis_rtos_clib",
@@ -75,6 +89,20 @@ pub fn build(b: *std.Build) !void {
     // Event flags options
     try addBuildOptionCdefine(lib, options, "evflags_obj_mem", "OS_EVFLAGS_OBJ_MEM", evflags_obj_mem);
     try addBuildOptionCdefine(lib, options, "evflags_num", "OS_EVFLAGS_NUM", evflags_num);
+    // Mutex options
+    try addBuildOptionCdefine(lib, options, "mutex_obj_mem", "OS_MUTEX_OBJ_MEM", mutex_obj_mem);
+    try addBuildOptionCdefine(lib, options, "mutex_num", "OS_MUTEX_NUM", mutex_num);
+    // Semaphore options
+    try addBuildOptionCdefine(lib, options, "semephore_obj_mem", "OS_SEMAPHORE_OBJ_MEM", semephore_obj_mem);
+    try addBuildOptionCdefine(lib, options, "semephore_num", "OS_SEMAPHORE_NUM", semephore_num);
+    // Memory pool options
+    try addBuildOptionCdefine(lib, options, "mempool_obj_mem", "OS_MEMPOOL_OBJ_MEM", mempool_obj_mem);
+    try addBuildOptionCdefine(lib, options, "mempool_num", "OS_MEMPOOL_NUM", mempool_num);
+    try addBuildOptionCdefine(lib, options, "mempool_data_size", "OS_MEMPOOL_DATA_SIZE", mempool_data_size);
+    // Message queue options
+    try addBuildOptionCdefine(lib, options, "msgqueue_obj_mem", "OS_MSGQUEUE_OBJ_MEM", msgqueue_obj_mem);
+    try addBuildOptionCdefine(lib, options, "msgqueue_num", "OS_MSGQUEUE_NUM", msgqueue_num);
+    try addBuildOptionCdefine(lib, options, "msgqueue_data_size", "OS_MSGQUEUE_DATA_SIZE", msgqueue_data_size);
 
     newlib.addIncludeHeadersAndSystemPathsTo(b, target, lib) catch |err| switch (err) {
         newlib.Error.CompilerNotFound => {
