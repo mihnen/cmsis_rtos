@@ -26,16 +26,24 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const options = b.addOptions();
 
+    // Kernel
     const dynamic_mem_size = b.option(u32, "dynamic_mem_size", "Global memory size (must be multiple of 8!)") orelse 32768;
     const tick_freq = b.option(u32, "tick_freq", "system tick frequency") orelse 1000;
-    const round_robin_to = b.option(u32, "round_robin_to", "round robin timeout (in ticks) before tasks switch") orelse 5;
-    const enable_round_robin = b.option(bool, "enable_round_robin", "Enable round robin task switching") orelse true;
-    const enable_stack_checks = b.option(bool, "enable_stack_checks", "Enable stack overflow checks when tasks switch") orelse false;
-    const enable_stack_watermark = b.option(bool, "enable_stack_watermark", "Enables stack watermark for checking task stack usage") orelse false;
-    const isr_queue_size = b.option(u32, "isr_queue_size", "Size of isr fifo queue") orelse 16;
-    const enable_thread_mempool = b.option(bool, "enable_thread_mempool", "Enable thread allocation from object specific memory pool") orelse false;
-    const num_user_threads = b.option(u32, "num_user_threads", "Defines maximum number of user threads that can be active at the same time. Applies to user threads with system provided memory for control blocks.") orelse 1;
-    const idle_stack_size = b.option(u32, "idle_stack_size", "Stack size of idle thread") orelse 512;
+    const robin_timeout = b.option(u32, "robin_timeout", "round robin timeout (in ticks) before tasks switch") orelse 5;
+    const robin_enable = b.option(bool, "robin_enable", "Enable round robin task switching") orelse true;
+    const isr_fifo_queue = b.option(u32, "isr_fifo_queue", "Size of isr fifo queue") orelse 16;
+    // Threads
+    const thread_obj_mem = b.option(bool, "thread_obj_mem", "Enable thread allocation from object specific memory pool") orelse false;
+    const stack_check = b.option(bool, "stack_check", "Enable stack overflow checks when tasks switch") orelse false;
+    const stack_watermark = b.option(bool, "stack_watermark", "Enables stack watermark for checking task stack usage") orelse false;
+    const thread_num = b.option(u32, "thread_num", "Defines maximum number of user threads that can be active at the same time. Applies to user threads with system provided memory for control blocks.") orelse 1;
+    const idle_thread_stack_size = b.option(u32, "idle_thread_stack_size", "Stack size of idle thread") orelse 512;
+    // Timers
+    const timer_obj_mem = b.option(bool, "timer_obj_mem", "Enable timer allocation from object specific memory pool") orelse false;
+    const timer_num = b.option(u32, "timer_num", "Defines maximum number of objects that can be active at the same time. Applies to objects with system provided memory for control blocks.") orelse 1;
+    const timer_thread_prio = b.option(u32, "timer_thread_pri", "Defines priority for timer thread. Default value is 40. Value range is [8-48], in multiples of 8. The numbers have the following priority correlation: 8=Low; 16=Below Normal; 24=Normal; 32=Above Normal; 40=High; 48=Realtime") orelse 40;
+    const timer_stack_size = b.option(u32, "timer_stack_size", "Defines stack size for Timer thread. May be set to 0 when timers are not used. Default value is 512. Value range is [0-1073741824], in multiples of 8.") orelse 512;
+    const timer_cb_queue = b.option(u32, "timer_cb_queue", "Number of concurrent active timer callback functions. May be set to 0 when timers are not used. Default value is 4. Value range is [0-256].") orelse 4;
 
     const lib = b.addStaticLibrary(.{
         .name = "cmsis_rtos_clib",
@@ -46,15 +54,21 @@ pub fn build(b: *std.Build) !void {
     // Kernel options
     try addBuildOptionCdefine(lib, options, "dynamic_mem_size", "OS_DYNAMIC_MEM_SIZE", dynamic_mem_size);
     try addBuildOptionCdefine(lib, options, "tick_freq", "OS_TICK_FREQ", tick_freq);
-    try addBuildOptionCdefine(lib, options, "isr_queue_size", "OS_ISR_FIFO_QUEUE", isr_queue_size);
-    try addBuildOptionCdefine(lib, options, "round_robin_to", "OS_ROBIN_TIMEOUT", round_robin_to);
-    try addBuildOptionCdefine(lib, options, "enable_round_robin", "OS_ROBIN_ENABLE", enable_round_robin);
+    try addBuildOptionCdefine(lib, options, "isr_fifo_queue", "OS_ISR_FIFO_QUEUE", isr_fifo_queue);
+    try addBuildOptionCdefine(lib, options, "robin_timeout", "OS_ROBIN_TIMEOUT", robin_timeout);
+    try addBuildOptionCdefine(lib, options, "robin_enable", "OS_ROBIN_ENABLE", robin_enable);
     // Thread options
-    try addBuildOptionCdefine(lib, options, "enable_thread_mempool", "OS_THREAD_OBJ_MEM", enable_thread_mempool);
-    try addBuildOptionCdefine(lib, options, "num_user_threads", "OS_THREAD_NUM", num_user_threads);
-    try addBuildOptionCdefine(lib, options, "idle_stack_size", "OS_IDLE_THREAD_STACK_SIZE", idle_stack_size);
-    try addBuildOptionCdefine(lib, options, "enable_stack_checks", "OS_STACK_CHECK", enable_stack_checks);
-    try addBuildOptionCdefine(lib, options, "enable_stack_watermark", "OS_STACK_WATERMARK", enable_stack_watermark);
+    try addBuildOptionCdefine(lib, options, "thread_obj_mem", "OS_THREAD_OBJ_MEM", thread_obj_mem);
+    try addBuildOptionCdefine(lib, options, "thread_num", "OS_THREAD_NUM", thread_num);
+    try addBuildOptionCdefine(lib, options, "idle_thread_stack_size", "OS_IDLE_THREAD_STACK_SIZE", idle_thread_stack_size);
+    try addBuildOptionCdefine(lib, options, "stack_check", "OS_STACK_CHECK", stack_check);
+    try addBuildOptionCdefine(lib, options, "stack_watermark", "OS_STACK_WATERMARK", stack_watermark);
+    // Timer options
+    try addBuildOptionCdefine(lib, options, "timer_obj_mem", "OS_TIMER_OBJ_MEM", timer_obj_mem);
+    try addBuildOptionCdefine(lib, options, "timer_num", "OS_TIMER_NUM", timer_num);
+    try addBuildOptionCdefine(lib, options, "timer_thread_pri", "OS_TIMER_THREAD_PRIO", timer_thread_prio);
+    try addBuildOptionCdefine(lib, options, "timer_stack_size", "OS_TIMER_THREAD_STACK_SIZE", timer_stack_size);
+    try addBuildOptionCdefine(lib, options, "timer_cb_queue", "OS_TIMER_CB_QUEUE", timer_cb_queue);
 
     newlib.addIncludeHeadersAndSystemPathsTo(b, target, lib) catch |err| switch (err) {
         newlib.Error.CompilerNotFound => {
