@@ -171,6 +171,16 @@ pub fn rtosInfo() void {
 }
 ```
 
+### Limitations
+
+* Currently on soft float targets are supported.
+* Supported cores
+    * Cortex M0
+    * Cortex M0+
+    * Cortex M3
+    * Cortex M4
+    * Cortex M7
+
 ## Authors
 
 Contributors names and contact info
