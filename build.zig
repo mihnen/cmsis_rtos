@@ -44,6 +44,9 @@ pub fn build(b: *std.Build) !void {
     const timer_thread_prio = b.option(u32, "timer_thread_pri", "Defines priority for timer thread. Default value is 40. Value range is [8-48], in multiples of 8. The numbers have the following priority correlation: 8=Low; 16=Below Normal; 24=Normal; 32=Above Normal; 40=High; 48=Realtime") orelse 40;
     const timer_stack_size = b.option(u32, "timer_stack_size", "Defines stack size for Timer thread. May be set to 0 when timers are not used. Default value is 512. Value range is [0-1073741824], in multiples of 8.") orelse 512;
     const timer_cb_queue = b.option(u32, "timer_cb_queue", "Number of concurrent active timer callback functions. May be set to 0 when timers are not used. Default value is 4. Value range is [0-256].") orelse 4;
+    // Event flags
+    const evflags_obj_mem = b.option(bool, "evflags_obj_mem", "Enable event flag allocation from object specific memory pool") orelse false;
+    const evflags_num = b.option(u32, "evflags_num", "Defines maximum number of objects that can be active at the same time. Applies to objects with system provided memory for control blocks. Value range is [1-1000].") orelse 1;
 
     const lib = b.addStaticLibrary(.{
         .name = "cmsis_rtos_clib",
@@ -69,6 +72,9 @@ pub fn build(b: *std.Build) !void {
     try addBuildOptionCdefine(lib, options, "timer_thread_pri", "OS_TIMER_THREAD_PRIO", timer_thread_prio);
     try addBuildOptionCdefine(lib, options, "timer_stack_size", "OS_TIMER_THREAD_STACK_SIZE", timer_stack_size);
     try addBuildOptionCdefine(lib, options, "timer_cb_queue", "OS_TIMER_CB_QUEUE", timer_cb_queue);
+    // Event flags options
+    try addBuildOptionCdefine(lib, options, "evflags_obj_mem", "OS_EVFLAGS_OBJ_MEM", evflags_obj_mem);
+    try addBuildOptionCdefine(lib, options, "evflags_num", "OS_EVFLAGS_NUM", evflags_num);
 
     newlib.addIncludeHeadersAndSystemPathsTo(b, target, lib) catch |err| switch (err) {
         newlib.Error.CompilerNotFound => {
