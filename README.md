@@ -12,6 +12,7 @@ to other executables or integrated as a zig module to link to a zig application.
 ### Dependencies
 
 * Zig (https://ziglang.org/)
+* CMSIS 5 (https://github.com/ARM-software/CMSIS_5)
 
 ### Building Static Library
 
@@ -180,6 +181,11 @@ pub fn rtosInfo() void {
     * Cortex M3
     * Cortex M4
     * Cortex M7
+
+### Licensing
+
+* This project is licensed under MIT (https://opensource.org/license/mit).
+* All source code from CMSIS is subject to its own licensing, currently Apache 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Please refer to the CMSIS project for details on its own licensing.
 
 ## Authors
 
