@@ -1,10 +1,29 @@
 const std = @import("std");
 pub const newlib = @import("gatz").newlib;
 
-pub fn build(b: *std.Build) void {
+fn addBuildOptionCdefine(c: *std.Build.Step.Compile, opts: *std.Build.Step.Options, opt_name: []const u8, macro_name: []const u8, value: anytype) !void {
+    var buf = [_]u8{0} ** 64;
+
+    opts.addOption(@TypeOf(value), opt_name, value);
+
+    switch (@typeInfo(@TypeOf(value))) {
+        .Bool => {
+            _ = try std.fmt.bufPrint(&buf, "{d}", .{@intFromBool(value)});
+        },
+        .Int => {
+            _ = try std.fmt.bufPrint(&buf, "{d}", .{value});
+        },
+        else => {
+            @compileError("unsupported type");
+        },
+    }
+
+    c.defineCMacro(macro_name, &buf);
+}
+
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-
     const options = b.addOptions();
 
     const dynamic_mem_size = b.option(u32, "dynamic_mem_size", "Global memory size (must be multiple of 8!)") orelse 32768;
@@ -14,14 +33,9 @@ pub fn build(b: *std.Build) void {
     const enable_stack_checks = b.option(bool, "enable_stack_checks", "Enable stack overflow checks when tasks switch") orelse false;
     const enable_stack_watermark = b.option(bool, "enable_stack_watermark", "Enables stack watermark for checking task stack usage") orelse false;
     const isr_queue_size = b.option(u32, "isr_queue_size", "Size of isr fifo queue") orelse 16;
-
-    options.addOption(u32, "dynamic_mem_size", dynamic_mem_size);
-    options.addOption(u32, "tick_freq", tick_freq);
-    options.addOption(u32, "round_robin_to", round_robin_to);
-    options.addOption(bool, "enable_round_robin", enable_round_robin);
-    options.addOption(bool, "enable_stack_checks", enable_stack_checks);
-    options.addOption(bool, "enable_stack_watermark", enable_stack_watermark);
-    options.addOption(u32, "isr_queue_size", isr_queue_size);
+    const enable_thread_mempool = b.option(bool, "enable_thread_mempool", "Enable thread allocation from object specific memory pool") orelse false;
+    const num_user_threads = b.option(u32, "num_user_threads", "Defines maximum number of user threads that can be active at the same time. Applies to user threads with system provided memory for control blocks.") orelse 1;
+    const idle_stack_size = b.option(u32, "idle_stack_size", "Stack size of idle thread") orelse 512;
 
     const lib = b.addStaticLibrary(.{
         .name = "cmsis_rtos_clib",
@@ -29,89 +43,18 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const dynamic_mem_size_value = std.fmt.allocPrint(
-        b.allocator,
-        "{d}",
-        .{dynamic_mem_size},
-    );
-
-    if (dynamic_mem_size_value) |value| {
-        lib.defineCMacro("OS_DYNAMIC_MEM_SIZE", value);
-    } else |err| {
-        std.debug.print("{s}\n", .{@errorName(err)});
-    }
-
-    const tick_freq_value = std.fmt.allocPrint(
-        b.allocator,
-        "{d}",
-        .{tick_freq},
-    );
-
-    if (tick_freq_value) |value| {
-        lib.defineCMacro("OS_TICK_FREQ", value);
-    } else |err| {
-        std.debug.print("{s}\n", .{@errorName(err)});
-    }
-
-    const round_robin_to_value = std.fmt.allocPrint(
-        b.allocator,
-        "{d}",
-        .{round_robin_to},
-    );
-
-    if (round_robin_to_value) |value| {
-        lib.defineCMacro("OS_ROBIN_TIMEOUT", value);
-    } else |err| {
-        std.debug.print("{s}\n", .{@errorName(err)});
-    }
-
-    const enable_stack_checks_value = std.fmt.allocPrint(
-        b.allocator,
-        "{d}",
-        .{@intFromBool(enable_stack_checks)},
-    );
-
-    if (enable_stack_checks_value) |value| {
-        lib.defineCMacro("OS_STACK_CHECK", value);
-    } else |err| {
-        std.debug.print("{s}\n", .{@errorName(err)});
-    }
-
-    const enable_stack_watermark_value = std.fmt.allocPrint(
-        b.allocator,
-        "{d}",
-        .{@intFromBool(enable_stack_watermark)},
-    );
-
-    if (enable_stack_watermark_value) |value| {
-        lib.defineCMacro("OS_STACK_WATERMARK", value);
-    } else |err| {
-        std.debug.print("{s}\n", .{@errorName(err)});
-    }
-
-    const isr_queue_size_value = std.fmt.allocPrint(
-        b.allocator,
-        "{d}",
-        .{isr_queue_size},
-    );
-
-    if (isr_queue_size_value) |value| {
-        lib.defineCMacro("OS_ISR_FIFO_QUEUE", value);
-    } else |err| {
-        std.debug.print("{s}\n", .{@errorName(err)});
-    }
-
-    const enable_round_robin_value = std.fmt.allocPrint(
-        b.allocator,
-        "{d}",
-        .{@intFromBool(enable_round_robin)},
-    );
-
-    if (enable_round_robin_value) |value| {
-        lib.defineCMacro("OS_ROBIN_ENABLE", value);
-    } else |err| {
-        std.debug.print("{s}\n", .{@errorName(err)});
-    }
+    // Kernel options
+    try addBuildOptionCdefine(lib, options, "dynamic_mem_size", "OS_DYNAMIC_MEM_SIZE", dynamic_mem_size);
+    try addBuildOptionCdefine(lib, options, "tick_freq", "OS_TICK_FREQ", tick_freq);
+    try addBuildOptionCdefine(lib, options, "isr_queue_size", "OS_ISR_FIFO_QUEUE", isr_queue_size);
+    try addBuildOptionCdefine(lib, options, "round_robin_to", "OS_ROBIN_TIMEOUT", round_robin_to);
+    try addBuildOptionCdefine(lib, options, "enable_round_robin", "OS_ROBIN_ENABLE", enable_round_robin);
+    // Thread options
+    try addBuildOptionCdefine(lib, options, "enable_thread_mempool", "OS_THREAD_OBJ_MEM", enable_thread_mempool);
+    try addBuildOptionCdefine(lib, options, "num_user_threads", "OS_THREAD_NUM", num_user_threads);
+    try addBuildOptionCdefine(lib, options, "idle_stack_size", "OS_IDLE_THREAD_STACK_SIZE", idle_stack_size);
+    try addBuildOptionCdefine(lib, options, "enable_stack_checks", "OS_STACK_CHECK", enable_stack_checks);
+    try addBuildOptionCdefine(lib, options, "enable_stack_watermark", "OS_STACK_WATERMARK", enable_stack_watermark);
 
     newlib.addIncludeHeadersAndSystemPathsTo(b, target, lib) catch |err| switch (err) {
         newlib.Error.CompilerNotFound => {
