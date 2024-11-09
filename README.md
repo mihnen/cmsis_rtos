@@ -185,7 +185,7 @@ pub fn rtosInfo() void {
 
 Contributors names and contact info
 
-1. Matt Ihnen
+1. Matt Ihnen <mihnen@milwaukeeelectronics.com> <matt.ihnen@gmail.com>
 
 ## Version History
 
